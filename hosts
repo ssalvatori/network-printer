@@ -1,0 +1,2 @@
+[all]
+ansible_connection=ssh ansible_host=192.168.8.104 ansible_ssh_user=pi

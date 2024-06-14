@@ -1,0 +1,67 @@
+---
+- name: Setup Network Printer
+  hosts: all
+  gather_facts: True
+  become: True
+
+  vars:
+    new_hostname: printer
+    extra_packages:
+      - curl
+      - cups
+      - samba
+      - printer-driver-gutenprint
+    cups_lpadmin_users:
+      - pi
+
+  tasks:
+
+    - name: Set timezone
+      community.general.timezone:
+        name: Europe/Berlin
+
+    - name: Update hostname
+      ansible.builtin.hostname:
+        name: "{{ new_hostname }}"
+
+    - name: Update packages
+      ansible.builtin.apt:
+        upgrade: True
+        clean: True
+        install_recommends: True
+        update_cache: True
+
+    - name: Install extra packages
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        update_cache: True
+        install_recommends: True
+      loop:
+        - "{{ extra_packages }}"
+
+    - name: Ensure a locale exists
+      community.general.locale_gen:
+        name: en_US.UTF-8
+        state: present
+
+    - name: Add accounts to lpadmin group (CUPS admin)
+      ansible.builtin.user:
+        name: "{{item}}"
+        append: yes
+        groups: lpadmin
+      with_items:
+        - "{{cups_lpadmin_users}}"
+
+    - name: Setup cups
+      ansible.builtin.template:
+        src: cupsd.conf.j2
+        dest: /etc/cups/cupsd.conf
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Restart service cups
+      ansible.builtin.service:
+        name: cups
+        state: restarted
+
